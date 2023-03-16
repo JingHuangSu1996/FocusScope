@@ -1,4 +1,4 @@
-import { FocusScope, useFocusManager } from "./FocusScope";
+import { FocusScope, useFocusManager } from "./FocusScope/FocusScope.jsx";
 import "./styles.css";
 
 function Toolbar(props) {

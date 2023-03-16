@@ -1,0 +1,15 @@
+export const focusableElements = [
+  "input:not([disabled]):not([type=hidden])",
+  "select:not([disabled])",
+  "textarea:not([disabled])",
+  "button:not([disabled])",
+  "a[href]",
+  "area[href]",
+  "summary",
+  "iframe",
+  "object",
+  "embed",
+  "audio[controls]",
+  "video[controls]",
+  "[contenteditable]",
+];
