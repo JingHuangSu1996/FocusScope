@@ -4,7 +4,7 @@ import "./styles.css";
 function Toolbar(props) {
   return (
     <div role="toolbar">
-      <FocusScope>{props.children}</FocusScope>
+      <FocusScope contain={true}>{props.children}</FocusScope>
     </div>
   );
 }
