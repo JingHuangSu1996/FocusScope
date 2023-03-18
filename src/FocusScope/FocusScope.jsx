@@ -1,5 +1,8 @@
 import React, { useRef, useEffect, useContext } from "react";
 import useAutoFocus from "./hooks/useAutoFocus";
+import useFocusContainment from "./hooks/useFocusContainment";
+import useRestoreFocus from "./hooks/useRestoreFocus";
+
 import { getFocusElementsInScope } from "./utils";
 
 const FocusContext = React.createContext(null);
@@ -45,7 +48,7 @@ export function createFocusManger(scopeRef) {
   };
 }
 
-export function FocusScope({ children, autoFocus = true }) {
+export function FocusScope({ children, restore, contain, autoFocus = true }) {
   let startRef = useRef(null);
   let endRef = useRef(null);
   let scopeRef = useRef([]);
@@ -62,7 +65,10 @@ export function FocusScope({ children, autoFocus = true }) {
     scopeRef.current = nodes;
   }, [children]);
 
+  useRestoreFocus(restore);
   useAutoFocus(scopeRef, autoFocus);
+  useFocusContainment(scopeRef, contain);
+
   let focusManager = createFocusManger(scopeRef);
 
   return (
