@@ -1,4 +1,5 @@
 import { focusableElements } from "./const";
+import getFocusableTreeWalker from "./dom/getFocusableTreeWalker";
 
 export const FOCUSABLE_ELEMENT_SELECTOR =
   focusableElements.join(",") + ",[tabindex]";
@@ -34,10 +35,79 @@ export function focusElement(element) {
 }
 
 export function focusFirstInScope(scope) {
-  let elements = getFocusElementsInScope(scope, { tabbable: true });
-  focusElement(elements[0]);
+  let sentinel = scope[0].previousElementSibling;
+  let walker = getFocusableTreeWalker(
+    getScopeRoot(scope),
+    { tabbable: true },
+    scope
+  );
+  walker.currentNode = sentinel;
+  focusElement(walker.nextNode());
 }
 
 export function isElementInScope(element, scope) {
   return scope.some((node) => node.contains(element));
+}
+
+function isStyleVisible(element) {
+  if (!(element instanceof HTMLElement) && !(element instanceof SVGElement)) {
+    return false;
+  }
+
+  let { display, visibility } = element.style;
+
+  let isVisible =
+    display !== "none" && visibility !== "hidden" && visibility !== "collapse";
+
+  if (isVisible) {
+    const { getComputedStyle } = element.ownerDocument.defaultView;
+    let { display: computedDisplay, visibility: computedVisibility } =
+      getComputedStyle(element);
+
+    isVisible =
+      computedDisplay !== "none" &&
+      computedVisibility !== "hidden" &&
+      computedVisibility !== "collapse";
+  }
+
+  return isVisible;
+}
+
+function isAttributeVisible(element, childElement) {
+  return (
+    !element.hasAttribute("hidden") &&
+    (element.nodeName === "DETAILS" &&
+    childElement &&
+    childElement.nodeName !== "SUMMARY"
+      ? element.hasAttribute("open")
+      : true)
+  );
+}
+
+/**
+ * Adapted from https://github.com/testing-library/jest-dom and
+ * https://github.com/vuejs/vue-test-utils-next/.
+ * Licensed under the MIT License.
+ * @param element - Element to evaluate for display or visibility.
+ */
+export function isElementVisible(element, childElement) {
+  return (
+    element.nodeName !== "#comment" &&
+    isStyleVisible(element) &&
+    isAttributeVisible(element, childElement) &&
+    (!element.parentElement || isElementVisible(element.parentElement, element))
+  );
+}
+
+export function getScopeRoot(scope) {
+  return scope[0].parentElement;
+}
+
+function isElementInAnyScope(element, scopes) {
+  for (let scope of scopes.values()) {
+    if (isElementInScope(element, scope.current)) {
+      return true;
+    }
+  }
+  return false;
 }

@@ -1,7 +1,10 @@
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
+import getFocusableTreeWalker from "../dom/getFocusableTreeWalker";
+import { scopes } from "../FocusScope";
 import {
   focusElement,
-  getFocusElementsInScope,
+  focusFirstInScope,
+  getScopeRoot,
   isElementInScope,
 } from "../utils";
 
@@ -10,8 +13,10 @@ import {
  */
 function useFocusContainment(scopeRef, contain) {
   let focusedNode = useRef();
+  let raf = useRef(null);
 
   useEffect(() => {
+    let scope = scopeRef.current;
     if (!contain) {
       return;
     }
@@ -27,26 +32,24 @@ function useFocusContainment(scopeRef, contain) {
         return;
       }
 
-      let elements = getFocusElementsInScope(scopeRef.current, {
-        tabbable: true,
-      });
-      let position = elements.indexOf(focusedElement);
-      let lastPosition = elements.length - 1;
-      let nextElement = null;
+      let walker = getFocusableTreeWalker(
+        getScopeRoot(scope),
+        {
+          tabbable: true,
+        },
+        scope
+      );
 
-      if (e.shiftKey) {
-        if (position === 0) {
-          nextElement = elements[lastPosition];
-        } else {
-          nextElement = elements[position - 1];
-        }
-      } else {
-        if (position === lastPosition) {
-          nextElement = elements[0];
-        } else {
-          nextElement = elements[position + 1];
-        }
+      walker.currentNode = focusedElement;
+      let nextElement = e.shiftKey ? walker.previousNode : walker.nextNode;
+      if (!nextElement) {
+        walker.currentNode = e.shiftKey
+          ? scope[scope.length - 1].nextElementSibling
+          : scope[0].previousElementSibling;
+
+        nextElement = e.shiftKey ? walker.previousNode() : walker.nextNode();
       }
+
       e.preventDefault();
 
       if (nextElement) {
@@ -57,28 +60,32 @@ function useFocusContainment(scopeRef, contain) {
     let onFocus = (e) => {
       // If the focused elment is in the current scope, and not in the active scope,
       // update the active scope to point to this scope
-      console.log(e, scopeRef.current);
       let isInScope = isElementInScope(e.target, scopeRef.current);
-      if (
-        isInScope &&
-        (!window.activeScope ||
-          !isElementInScope(e.target, window.activeScope.current))
-      ) {
-        activeScope = scopeRef;
-      }
-      // Save the currently focused node in this scope
-      if (isInScope) {
-        focusedNode.current = e.target;
-      }
 
-      if (activeScope === scopeRef && !isInScope) {
+      if (!isInScope) {
         if (focusedNode.current) {
           focusedNode.current.focus();
-        } else {
-          focusFirstInScope(scopeRef.current);
+        } else if (window.activeScope) {
+          focusFirstInScope(activeScope.current);
         }
+      } else {
+        activeScope = scopeRef;
+        focusedNode.current = e.target;
       }
     };
+
+    let onBlur = (e) => {
+      raf.current = requestAnimationFrame(() => {
+        let isInScope = isElementInScope(document.activeElement, scopes);
+
+        if (!isInScope) {
+          activeScope = scopeRef;
+          focusedNode.current = e.target;
+          focusedNode.current.focus();
+        }
+      });
+    };
+
     document.addEventListener("keydown", onKeyDown, false);
     document.addEventListener("focusin", onFocus, false);
     return () => {
@@ -86,6 +93,10 @@ function useFocusContainment(scopeRef, contain) {
       document.removeEventListener("focusin", onFocus, false);
     };
   }, [scopeRef, contain]);
+  // eslint-disable-next-line arrow-body-style
+  useEffect(() => {
+    return () => cancelAnimationFrame(raf.current);
+  }, [raf]);
 }
 
 export default useFocusContainment;
