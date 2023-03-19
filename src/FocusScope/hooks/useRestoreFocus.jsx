@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useLayoutEffect } from "react";
 import { focusElement } from "../utils";
 
 /**
@@ -6,7 +6,7 @@ import { focusElement } from "../utils";
  * after the focus scope unmounts.
  */
 function useRestoreFocus(restoreFocus) {
-  useEffect(() => {
+  useLayoutEffect(() => {
     let nodeToRestore = document.activeElement;
 
     return () => {
